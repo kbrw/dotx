@@ -33,9 +33,13 @@ dot_string = "#{graph}"
 # pretty print of graph in the dot format
 # to_string() encode the graph thanks to String.Chars protocol
 
-# You can Spread node attrs to all edges from|to nodes elem with same
-# identifiers
-graph = Dotx.spread_nodes(graph)
+# You can flatten all edge shorthands of DOT : {a b}-> c -> d became
+# {a b} a->c b->c b->d
+flatgraph = Dotx.flatten(graph)
+
+# You can add a unique ID for every graph and subgraph without one to allow
+# easy graph property association of nodes and edges
+idgraph = Dotx.identify(graph)
 
 # You can Spread default attributes (`node [...]`, `graph [...]`, `edge [...]`
 # to all edges/graphs/nodes descendants of attribute definitions

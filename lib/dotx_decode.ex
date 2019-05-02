@@ -19,10 +19,11 @@ defmodule Dotx.Graph do
     case :dot_lexer.string(to_charlist(bin)) do
       {:ok, tokens, _} ->
         case :dot_parser.parse(tokens) do
-          {:ok, tree} -> tree
-          error -> error
+          {:ok, tree} -> {:ok,tree}
+          {:error,{line,_,msg}} ->
+            {:error,"line #{line}: #{:dot_parser.format_error(msg)}"}
         end
-      error -> error
+      {:error,{line,_,msg},_} -> {:error,"line #{line}: #{:dot_lexer.format_error(msg)}"}
     end
   end
 
