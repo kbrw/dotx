@@ -1,3 +1,5 @@
+# public interface and doc main library file
+
 defmodule Dotx do
   @type id :: binary | %Dotx.HTML{html: binary}
   @type nodeid :: [binary]
