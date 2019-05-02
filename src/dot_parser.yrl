@@ -73,7 +73,6 @@ NodeId -> id ':' id           : [element(3,'$1'),element(3,'$3')].
 NodeId -> id ':' id ':' id    : [element(3,'$1'),element(3,'$3'),element(3,'$5')].
 
 Subgraph ->               '{' StmtList '}'    : 'Elixir.Dotx.Graph':childattrs2fields('Elixir.Dotx.SubGraph':'__struct__'([{children,lists:flatten('$2')}])).
-Subgraph ->            id '{' StmtList '}'    : 'Elixir.Dotx.Graph':childattrs2fields('Elixir.Dotx.SubGraph':'__struct__'([{id,element(3,'$1')},{children,lists:flatten('$3')}])).
 Subgraph -> 'subgraph' id '{' StmtList '}'    : 'Elixir.Dotx.Graph':childattrs2fields('Elixir.Dotx.SubGraph':'__struct__'([{id,element(3,'$2')},{children,lists:flatten('$4')}])).
 
 %% Number of shift/reduce conflicts

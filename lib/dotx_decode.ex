@@ -50,40 +50,31 @@ end
 defmodule Dotx.Edge do
   defstruct from: [], to: [], attrs: %{}, bidir: true
 
-  def flatten(edge) do
-    #Enum.flat_map(do_flat_inline(edge),&do_flat_subgraph(&1))
-    do_flat_inline(edge)
+  def flatten(edge) do do_flatten(edge,false) end
+
+  # do_flatten: a->b->c becomes a->b b->c
+  def do_flatten(%__MODULE__{from: from,to: %__MODULE__{from: to} = toedge, attrs: attrs} = edge,nested?) do
+    do_flatten2(edge,from,to,nested?) ++ do_flatten(%{toedge | attrs: attrs}, true)
   end
-  def flatten(%__MODULE__{from: from,to: %__MODULE__{from: to} = toedge, attrs: attrs} = edge) do
-    do_flat(toedge,from,to,true) ++ flatten(%{toedge | attrs: attrs})
-  end
-  def flatten(%__MODULE__{from: from, to: to} = edge) do 
-    do_flat(edge,from,to,false)
+  def do_flatten(%__MODULE__{from: from, to: to} = edge, nested?) do 
+    do_flatten2(edge,from,to,nested?)
   end
 
-  def do_flat(edge,from,to,nested?) do
-    {from_subgraph,from_nodes}=split_graph_nodes(from)
-    {to_subgraph,to_nodes}=split_graph_nodes(to)
-    # if piped edge (a -> {b c} -> d) then nested? = true : subgraph already added
-    List.wrap(if not(nested?) do from_subgraph end)++to_subgraph++
-        for from<-from_nodes, to<-to_nodes do %{edge| from: from, to: to} end
+  # do_flatten2: {a b}->{c d} becomes {a b} {c d} a->c a->d b->c b->d
+  def do_flatten2(edge,from,to,nested?) do
+    case {from,to} do
+      {%Dotx.Node{},%Dotx.Node{}}-> [%{edge| from: from, to: to}]
+      {%Dotx.SubGraph{}=g,%Dotx.Node{}=n}->
+        if nested? do [] else [g] end ++ 
+          for %Dotx.Node{}=from<-g.children do %{edge|from: from} end
+      {%Dotx.Node{}=n,%Dotx.SubGraph{}=g}->
+        [g| for %Dotx.Node{}=to<-g.children do %{edge|to: to} end]
+      {%Dotx.SubGraph{}=gfrom,%Dotx.SubGraph{}=gto}->
+        if nested? do [] else [gfrom] end ++ [gto] ++
+          for %Dotx.Node{}=from<-gfrom.children, 
+              %Dotx.Node{}=to<-gto.children do %{edge|from: from, to: to} end
+    end
   end
-
-  defp split_graph_nodes(%Dotx.SubGraph{}=g), do:
-    {[g], for %Dotx.Node{}=n<-g.children do n end}
-  defp split_graph_nodes(%Dotx.Node{}=n), do:
-    {[], [n]}
-
-  #def do_flat_subgraph(%__MODULE__{from: from, to: to}=e) do
-  #  subcheck = fn 
-  #    %Dotx.SubGraph{}=g->  {[g], for %Dotx.Node{}=n<-g.children do n end}
-  #    %Dotx.Node{}=n->  {[], [n]}
-  #  end
-  #  {from_subgraph,from_nodes}=subcheck.(from); {to_subgraph,to_nodes}=subcheck.(to)
-  #  from_subgraph ++ to_subgraph ++ for from<-from_nodes, to<-to_nodes do
-  #    %{e|from: from, to: to}
-  #  end
-  #end
 end
 
 defmodule Dotx.HTML do

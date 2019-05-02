@@ -13,6 +13,11 @@ defmodule DotxTest do
       dot = "#{parsed}"
       File.write!("test/examples_out/#{Path.basename(unquote(dot_path))}", dot)
       assert parsed == Dotx.decode(dot)
+      #IO.puts unquote(dot_path)
+      #if parsed != Dotx.decode(dot) do
+      #  IO.inspect(Dotx.decode(dot), pretty: true)
+      #  #IO.puts "#{Dotx.decode(dot)}"
+      #end
     end
   end
 

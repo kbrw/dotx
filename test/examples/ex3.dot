@@ -1,5 +1,5 @@
 digraph D {
 
-  A -> {B C D} -> {F}
+  A -> {B C D} -> {F, D}
 
 }
