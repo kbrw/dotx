@@ -47,28 +47,80 @@ defmodule DotxTest do
     assert String.contains?(dot, "subgraph x2")
   end
 
-  test "test nodes get" do
+  test "test to_nodes data conversion" do
     g = """
-      digraph { node [z=z] A [a=1] { {node [b=2] { B [d=3] } B -> A } } C }
+      digraph { 
+        ga = 1
+        graph [gb = 2]
+        node [z=z] 
+        edge [ea = 1]
+        A [a=1]
+        { 
+          {
+            node [b=2] 
+            { gc = 3 B [d=3] } 
+            B -> A -> D [eb = 2]
+          } 
+        } 
+        C 
+      }
     """
-    nodes = Dotx.describe(Dotx.decode!(g)).nodes
-    assert %{attrs: %{"graph"=>"x2","a"=>"1","b"=>"2","z"=>"z"}} =
-              nodes[["A"]]
-    assert %{attrs: %{"graph"=>"x3","b"=>"2","d"=>"3","z"=>"z"}} =
-              nodes[["B"]]
+    {nodes,graphs} = Dotx.to_nodes(Dotx.decode!(g))
+    assert %{attrs: %{"graph"=>"x2","a"=>"1","b"=>"2","z"=>"z", "edges_from"=> [
+          %{to: %{id: ["D"]},attrs: %{"graph"=> "x2", "ea"=>"1", "eb"=>"2"}}
+        ]}} = nodes[["A"]]
+    assert %{attrs: %{"graph"=>"x3","b"=>"2","d"=>"3","z"=>"z", "edges_from"=> [
+          %{to: %{id: ["A"]},attrs: %{"graph"=> "x2", "ea"=>"1", "eb"=>"2"}}
+        ]}} = nodes[["B"]]
     assert %{attrs: %{"graph"=>"x0","z"=>"z"}} =
               nodes[["C"]]
+    assert %{attrs: %{"gc"=>"3", "gb"=>"2","parent"=>"x2"}} = graphs["x3"]
+  end
+
+  test "test to_edges data conversion" do
+    g = """
+      digraph { 
+        ga = 1
+        graph [gb = 2]
+        node [z=z] 
+        edge [ea = 1]
+        A [a=1]
+        {
+          {
+            node [b=2] 
+            { gc = 3 B [d=3] }
+            B -> A -> D [eb = 2]
+          }
+        }
+        C 
+      }
+    """
+    {edges,_graphs} = Dotx.to_edges(Dotx.decode!(g))
+    edges = Enum.sort_by(edges,& {&1.from.id,&1.to.id})
+    assert [
+        %{from: %{ attrs: %{"b"=> "2","graph"=>"x2"}, id: ["A"]}, to: %{ id: ["D"]}},
+        %{from: %{ attrs: %{"d"=> "3","graph"=>"x3"}, id: ["B"]}, to: %{ id: ["A"]}, attrs: %{"graph"=>"x2"}}
+      ] = edges
   end
 
   test "test digraph" do
-    
+    g = """
+      digraph { 
+        a e f
+        a->b
+        a->b->{c d}->{e f}->g
+        { c->a f->b }
+      }
+    """
+    g = Dotx.to_digraph(Dotx.decode!(g))
+    assert ["a", "b", "c", "d", "e", "f", "g"] ==
+              Enum.sort(for [x]<-:digraph.vertices(g) do x end)
+    assert Enum.sort(for e<-:digraph.edges(g) do {_,[f],[t],_} = :digraph.edge(g,e); {f,t} end) == 
+      [{"a","b"},{"a","b"},
+       {"b","c"},{"b","d"},
+       {"c","a"},{"c","e"},{"c","f"},
+       {"d","e"},{"d","f"},
+       {"e","g"},
+       {"f","b"},{"f","g"}]
   end
-  #test "test attribute spread for ex8.dot" do
-  #  graph = Dotx.decode!(File.read!("test/examples/ex8.dot"))
-  #  #IO.inspect graph, pretty: true
-  #  graph = Dotx.spread_attributes(graph)
-  #  IO.puts graph
-  #  #IO.inspect Dotx.nodes(graph), pretty: true
-  #  #assert parsed == Dotx.decode(dot)
-  #end
 end

@@ -103,26 +103,41 @@ defmodule Dotx do
   end
   def identify(o,i) do {o,i} end
 
-  def describe(graph) do
-    graph = identify(graph)
-    res = describe(graph,%{nodes: %{},edges: [],graphs: [],parent_graph: {:root,0},
+  def to_nodes(graph) do
+    graph = graph |> identify() |> flatten()
+    res = to_nodes(graph,%{nodes: %{},graphs: %{},parent_graph: {nil,0},
                                   nodes_attrs: %{}, edges_attrs: %{}, graphs_attrs: %{}})
     nodes = Enum.into(res.nodes,%{},fn {k,n}-> 
-      {k,%{n|attrs: %{n.attrs|"graph"=> elem(n.attrs["graph"],0)}}}
+      attrs = %{n.attrs|"graph"=> elem(n.attrs["graph"],0)} # remove graph depth
+      attrs = Map.put_new(attrs,"edges_from",[]) # if no edges, add attribute edges_from to empty
+      {k,%{n|attrs: attrs}}
     end)
-    %{res|nodes: nodes}
+    {nodes,res.graphs}
   end
-  def describe(%{children: children}=g,%{parent_graph: {_,depth}}=acc) do
+  def to_nodes(%{children: children}=g,%{parent_graph: {parent,depth}}=acc) do
+    ## put graph to db: add parent and children attributes, inherit attributes
+    g = %{g|children: [],attrs: Enum.into([
+          {"parent",parent},
+          {"children",for %Dotx.SubGraph{id: childid}<-children do childid end}
+        ],Map.merge(acc.graphs_attrs,g.attrs))}
+    acc = %{acc|graphs: Map.put(acc.graphs,g.id,g)}
+
     nodes_attrs = Map.merge(acc.nodes_attrs,g.nodes_attrs)
     edges_attrs = Map.merge(acc.edges_attrs,g.edges_attrs)
+    graphs_attrs = Map.merge(acc.graphs_attrs,g.graphs_attrs)
     Enum.reduce(children,acc,fn e,acc->
-      describe(e,%{acc|nodes_attrs: nodes_attrs, parent_graph: {g.id,depth+1}})
+      to_nodes(e,%{acc|nodes_attrs: nodes_attrs, edges_attrs: edges_attrs, graphs_attrs: graphs_attrs, 
+                       parent_graph: {g.id,depth+1}})
     end)
   end
-  def describe(%Dotx.Edge{from: from, to: to},acc) do
-    describe(to,describe(from,acc))
+  def to_nodes(%Dotx.Edge{from: %Dotx.Node{}=from, to: %Dotx.Node{}=to}=e,%{parent_graph: {parent,_}}=acc) do
+    e = %{e|attrs: acc.edges_attrs |> Map.merge(e.attrs) |> Map.put("graph",parent)}
+    acc = to_nodes(to,to_nodes(from,acc))
+    %{acc|nodes: Map.update!(acc.nodes,from.id,fn oldn->
+      %{oldn|attrs: Map.update(oldn.attrs,"edges_from",[e],&[e|&1])}
+    end)}
   end
-  def describe(%Dotx.Node{}=n,%{parent_graph: {_,parentdepth}=pgraph}=acc) do
+  def to_nodes(%Dotx.Node{}=n,%{parent_graph: {_,parentdepth}=pgraph}=acc) do
     n = %{n|attrs: Map.merge(acc.nodes_attrs,n.attrs)}
     default_n = %{n|attrs: Map.put(n.attrs,"graph",pgraph)}
     %{acc|nodes: Map.update(acc.nodes,n.id,default_n,fn oldn->
@@ -133,8 +148,23 @@ defmodule Dotx do
       end)}
   end
 
-  # TODO nodes flatten with a "graph" attribute with deepest subgraph owning node
-  # @spec describe(graph(flatedge)) :: [dotnode]
-  # TODO edges flatten with a "graph" attribute containing owning subgraph id
-  # @spec edges(graph(flatedge)) :: [flatedge]
+  def to_edges(%Dotx.Graph{}=g) do g |> to_nodes() |> to_edges() end
+  def to_edges({nodes,graphs}) do
+    edges = Enum.flat_map(nodes,fn {_,%Dotx.Node{attrs: attrs}}->
+      Enum.map(attrs["edges_from"],fn %{from: from, to: to}=e->
+        %{e|from: del_edges_from(nodes[from.id]), to: del_edges_from(nodes[to.id])}
+      end)
+    end)
+    {edges,graphs}
+  end
+  def del_edges_from(n) do %{n|attrs: Map.delete(n.attrs,"edges_from")} end
+
+  def to_digraph(%Dotx.Graph{}=dot) do g=:digraph.new ; fill_digraph(g,flatten(dot)); g end
+  def fill_digraph(g,%{children: children}) do for e<-children do fill_digraph(g,e) end end
+  def fill_digraph(g,%Dotx.Node{id: id}) do :digraph.add_vertex(g,id) end
+  def fill_digraph(g,%Dotx.Edge{from: %Dotx.Node{id: fromid}, to: %Dotx.Node{id: toid}}) do 
+    :digraph.add_vertex(g,fromid)
+    :digraph.add_vertex(g,toid)
+    :digraph.add_edge(g,fromid,toid)
+  end
 end
