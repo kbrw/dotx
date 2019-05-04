@@ -20,6 +20,8 @@ defimpl String.Chars, for: Dotx.Graph do
       _ -> str
     end
   end
+  
+  def format_id(_) do "nottext" end
 
   def to_string(graph) do
     prefix = "#{if graph.strict, do: "strict "}#{graph.type}#{if graph.id, do: " " <> format_id(graph.id)}"

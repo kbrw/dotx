@@ -5,7 +5,7 @@
 #  - additional functions used by `dot_parser` in order to flatten the dot structure to make it more usable
 
 defmodule Dotx.Graph do
-  defstruct strict: false, type: :graph, id: nil, children: [], attrs: %{}, nodes_attrs: %{}, graphs_attrs: %{}, edges_attrs: %{}
+  defstruct strict: false, type: :digraph, id: nil, children: [], attrs: %{}, nodes_attrs: %{}, graphs_attrs: %{}, edges_attrs: %{}
 
   def parse(bin) do
     # tricks : 
