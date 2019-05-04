@@ -103,8 +103,38 @@ defmodule Dotx do
   end
   def identify(o,i) do {o,i} end
 
+  def describe(graph) do
+    graph = identify(graph)
+    res = describe(graph,%{nodes: %{},edges: [],graphs: [],parent_graph: {:root,0},
+                                  nodes_attrs: %{}, edges_attrs: %{}, graphs_attrs: %{}})
+    nodes = Enum.into(res.nodes,%{},fn {k,n}-> 
+      {k,%{n|attrs: %{n.attrs|"graph"=> elem(n.attrs["graph"],0)}}}
+    end)
+    %{res|nodes: nodes}
+  end
+  def describe(%{children: children}=g,%{parent_graph: {_,depth}}=acc) do
+    nodes_attrs = Map.merge(acc.nodes_attrs,g.nodes_attrs)
+    edges_attrs = Map.merge(acc.edges_attrs,g.edges_attrs)
+    Enum.reduce(children,acc,fn e,acc->
+      describe(e,%{acc|nodes_attrs: nodes_attrs, parent_graph: {g.id,depth+1}})
+    end)
+  end
+  def describe(%Dotx.Edge{from: from, to: to},acc) do
+    describe(to,describe(from,acc))
+  end
+  def describe(%Dotx.Node{}=n,%{parent_graph: {_,parentdepth}=pgraph}=acc) do
+    n = %{n|attrs: Map.merge(acc.nodes_attrs,n.attrs)}
+    default_n = %{n|attrs: Map.put(n.attrs,"graph",pgraph)}
+    %{acc|nodes: Map.update(acc.nodes,n.id,default_n,fn oldn->
+        n = %{oldn|attrs: Map.merge(oldn.attrs,n.attrs)}
+        %{n|attrs: Map.update(n.attrs,"graph",acc.parent_graph, fn {_,depth}=graph->
+              if parentdepth > depth do pgraph else graph end
+          end)}
+      end)}
+  end
+
   # TODO nodes flatten with a "graph" attribute with deepest subgraph owning node
-  # @spec nodes(graph(flatedge)) :: [dotnode]
+  # @spec describe(graph(flatedge)) :: [dotnode]
   # TODO edges flatten with a "graph" attribute containing owning subgraph id
   # @spec edges(graph(flatedge)) :: [flatedge]
 end

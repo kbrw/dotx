@@ -47,6 +47,22 @@ defmodule DotxTest do
     assert String.contains?(dot, "subgraph x2")
   end
 
+  test "test nodes get" do
+    g = """
+      digraph { node [z=z] A [a=1] { {node [b=2] { B [d=3] } B -> A } } C }
+    """
+    nodes = Dotx.describe(Dotx.decode!(g)).nodes
+    assert %{attrs: %{"graph"=>"x2","a"=>"1","b"=>"2","z"=>"z"}} =
+              nodes[["A"]]
+    assert %{attrs: %{"graph"=>"x3","b"=>"2","d"=>"3","z"=>"z"}} =
+              nodes[["B"]]
+    assert %{attrs: %{"graph"=>"x0","z"=>"z"}} =
+              nodes[["C"]]
+  end
+
+  test "test digraph" do
+    
+  end
   #test "test attribute spread for ex8.dot" do
   #  graph = Dotx.decode!(File.read!("test/examples/ex8.dot"))
   #  #IO.inspect graph, pretty: true
