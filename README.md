@@ -17,7 +17,7 @@ by adding `khost_topo` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:dotx, "~> 0.2.0"}
+    {:dotx, "~> 0.3.0"}
   ]
 end
 ```
@@ -44,4 +44,17 @@ idgraph = Dotx.identify(graph)
 # You can Spread default attributes (`node [...]`, `graph [...]`, `edge [...]`
 # to all edges/graphs/nodes descendants of attribute definitions
 graph = Dotx.spread_attributes(graph)
+
+# You can create a node database where all shorthands of dot (attributes
+# inheritance, inline edges or edges between subgraph) are resolved to get a
+# simple usable view of your graph
+{nodes,graphs} = Dotx.to_nodes(graph)
+%{attrs: %{"edges_from"=> from_a_edges, "graph"=>graphid, "otherattr"=>attr}} = nodes[["A"]]
+nodea_graph = %{attrs: %{"someattr"=>attr}} = graphs[graphid]
+[%{attrs: %{"someattr"=>attr, "graph"=>graphid}, to: %{id: tonodeid}}|_] = from_a_edges
+firstnode_linked_to_a = nodes[tonodeid]
+
+# You can use an erlang `:digraph` to handle your graph and make complex graph analysis :
+digraph = Dotx.to_digraph(graph)
+vertices = :digraph.get_short_path(digraph,["A"],["B"])
 ```
