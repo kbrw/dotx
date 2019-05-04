@@ -27,6 +27,14 @@ defmodule Dotx.Graph do
     end
   end
 
+  def parse!(bin) do
+    case parse(bin) do
+      {:ok,graph}->graph
+      {:error,msg}->
+        raise ArgumentError, "cannot parse DOT : #{msg}"
+    end
+  end
+
   def childattrs2fields(%{children: children} = graph) do
     graph =
       Enum.reduce(children, %{graph | children: []}, fn
@@ -51,6 +59,7 @@ end
 defmodule Dotx.Edge do
   defstruct from: [], to: [], attrs: %{}, bidir: true
 
+  # flatten %Edge{to: %Edge{} | %SubGraph{}}-> [%Edge{from: %Node{},to: %Node{}}]
   def flatten(edge) do do_flatten(edge,false) end
 
   # do_flatten: a->b->c becomes a->b b->c
@@ -65,10 +74,10 @@ defmodule Dotx.Edge do
   def do_flatten2(edge,from,to,nested?) do
     case {from,to} do
       {%Dotx.Node{},%Dotx.Node{}}-> [%{edge| from: from, to: to}]
-      {%Dotx.SubGraph{}=g,%Dotx.Node{}=n}->
+      {%Dotx.SubGraph{}=g,%Dotx.Node{}}->
         if nested? do [] else [g] end ++ 
           for %Dotx.Node{}=from<-g.children do %{edge|from: from} end
-      {%Dotx.Node{}=n,%Dotx.SubGraph{}=g}->
+      {%Dotx.Node{},%Dotx.SubGraph{}=g}->
         [g| for %Dotx.Node{}=to<-g.children do %{edge|to: to} end]
       {%Dotx.SubGraph{}=gfrom,%Dotx.SubGraph{}=gto}->
         if nested? do [] else [gfrom] end ++ [gto] ++
