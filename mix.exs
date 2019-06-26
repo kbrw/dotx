@@ -4,7 +4,7 @@ defmodule Dotx.MixProject do
   def project do
     [
       app: :dotx,
-      version: "0.3.0",
+      version: "0.3.1",
       elixir: "~> 1.7",
       start_permanent: Mix.env() == :prod,
       name: "Dotx Elixir dot parser",
@@ -14,6 +14,7 @@ defmodule Dotx.MixProject do
           The whole spec [https://www.graphviz.org/doc/info/lang.html](https://www.graphviz.org/doc/info/lang.html) is implemented.
           """,
         links: %{repo: "https://github.com/kbrw/dotx", doc: "https://hexdocs.pm/dotx"},
+        files: ["lib", "mix.exs", "README*", "LICENSE*", "src/dot_lexer.xrl","src/dot_parser.yrl"],
         licenses: ["MIT"],
       ],
       source_url: "https://github.com/kbrw/dotx",
